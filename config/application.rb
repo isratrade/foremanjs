@@ -53,6 +53,15 @@ end
 
 module Foreman
   class Application < Rails::Application
+
+    config.middleware.insert_before "ActionDispatch::Static", "Rack::Cors" do
+      allow do
+        origins '*'
+        resource '*', :headers => :any, :methods => [:get, :post, :options]
+      end
+    end
+
+
     # Setup additional routes by loading all routes file from routes directory
     config.paths["config/routes"] += Dir[Rails.root.join("config/routes/**/*.rb")]
 
