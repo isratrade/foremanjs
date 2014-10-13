@@ -4,8 +4,8 @@ class ApplicationController < ActionController::Base
   include Foreman::ThreadSession::Cleaner
   include FindCommon
 
-  ensure_security_headers
-  protect_from_forgery # See ActionController::RequestForgeryProtection for details
+#  protect_from_forgery # See ActionController::RequestForgeryProtection for details
+
   rescue_from ScopedSearch::QueryNotSupported, :with => :invalid_search_query
   rescue_from Exception, :with => :generic_exception if Rails.env.production?
   rescue_from ActiveRecord::RecordNotFound, :with => :not_found
