@@ -6,33 +6,16 @@ module Api
     include Foreman::ThreadSession::Cleaner
     include FindCommon
 
-before_filter :allow_cross_domain_access
-after_filter :cors_set_access_control_headers
+  after_filter :cors_set_access_control_headers
 
-# For all responses in this controller, return the CORS access control headers.
-
-def cors_set_access_control_headers
-  headers['Access-Control-Allow-Origin'] = 'http://localhost:4200'
-  headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS'
-  headers['Access-Control-Max-Age'] = "1728000"
-end
-
-def cors_preflight_check
-  if request.method == :options
-    headers['Access-Control-Allow-Origin'] = 'http://localhost:4200'
-    headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS'
-    headers['Access-Control-Allow-Headers'] = 'X-Requested-With, X-Prototype-Version'
-    headers['Access-Control-Max-Age'] = '1728000'
-    render :text => '', :content_type => 'text/plain'
+  def cors_set_access_control_headers
+    headers['Access-Control-Allow-Origin']      = '*'
+    headers['Access-Control-Allow-Methods']     = 'POST, GET, OPTIONS'
+    headers['Access-Control-Max-Age']           = '1728000'
+    headers['Access-Control-Allow-Credentials'] = 'true'
   end
-end
 
-def allow_cross_domain_access
-    headers['Access-Control-Allow-Origin'] = 'http://localhost:4200'# http://localhost:9000
-    headers['Access-Control-Allow-Headers'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    headers['Access-Control-Allow-Methods'] = %w{Origin Accept Content-Type X-Requested-With X-CSRF-Token}.join(',')
-    headers['Access-Control-Max-Age'] = '1728000'
-end
+
     #protect_from_forgery
     skip_before_filter :verify_authenticity_token #, :unless => :protect_api_from_forgery?
 
