@@ -1,5 +1,6 @@
 require 'securerandom'
 
+
 #Common methods between host and hostgroup
 # mostly for template rendering consistency
 module HostCommon
@@ -21,6 +22,7 @@ module HostCommon
     belongs_to :realm,           :counter_cache => counter_cache
     belongs_to :subnet
     belongs_to :compute_profile
+    belongs_to :compute_resource
 
     before_save :check_puppet_ca_proxy_is_required?, :crypt_root_pass
 
@@ -53,6 +55,16 @@ module HostCommon
       end
     end
   end
+
+  def interesting_klasses
+    classes    = obj.all_puppetclasses
+    smart_vars = LookupKey.reorder('').where(:puppetclass_id => classes.map(&:id)).group(:puppetclass_id).count
+    class_vars = LookupKey.reorder('').joins(:environment_classes).where(:environment_classes => { :puppetclass_id => classes.map(&:id) }).group('environment_classes.puppetclass_id').count
+    klasses    = smart_vars.keys + class_vars.keys
+
+    classes.select { |pc| klasses.include?(pc.id) }
+  end
+
 
   # Returns a url pointing to boot file
   def url_for_boot(file)
