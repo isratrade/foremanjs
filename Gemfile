@@ -27,9 +27,8 @@ gem 'secure_headers', '~> 1.3.3'
 
 gem 'rack-cors', :require => 'rack/cors'
 gem 'foreman_api_v3', :path => '/home/jmagen/foreman_api_v3' #api serializers and controllers
-gem 'foreman_js', :path => '/home/jmagen/foreman_js'  #ember JS app
+#gem 'foreman_js', :path => '/home/jmagen/foreman_js'  #ember JS app
 gem 'staypuft', :git => 'git://github.com/theforeman/staypuft.git'
-
 
 if RUBY_VERSION =~ /^1\.8/
   # Older version of safemode for Ruby 1.8, as the latest causes regexp overflows (#2100)

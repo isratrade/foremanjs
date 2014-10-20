@@ -10,6 +10,8 @@ Foreman::Application.routes.draw do
     end
   end
 
+ resources :rhcis
+
   match '(:controller)/help', :action => 'welcome', :as => "help"
   constraints(:id => /[^\/]+/) do
     resources :hosts do
