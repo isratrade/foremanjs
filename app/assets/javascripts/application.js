@@ -67,12 +67,12 @@ function onContentLoad(){
   $('a[rel="popover"]').popover({html: true});
   $('[rel="twipsy"]').tooltip();
   $('*[title]').not('*[rel]').tooltip();
-  $('[data-table=inline]').not('.dataTable').dataTable(
-      {
-        "sDom": "<'row'<'col-md-6'f>r>t<'row'<'col-md-6'i><'col-md-6'p>>",
-        "sPaginationType": "bootstrap"
-      }
-  );
+  // $('[data-table=inline]').not('.dataTable').dataTable(
+  //     {
+  //       "sDom": "<'row'<'col-md-6'f>r>t<'row'<'col-md-6'i><'col-md-6'p>>",
+  //       "sPaginationType": "bootstrap"
+  //     }
+  // );
 
   // Prevents all links with the disabled attribute set to "disabled"
   // from being clicked.
