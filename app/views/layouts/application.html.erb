@@ -1,4 +1,5 @@
 <%= content_for(:content) do %>
+  <div id="rhci-container">
   <div id="main">
     <%= content_tag('div', flash[:error],   :class => 'flash hide error')   if flash[:error] %>
     <%= content_tag('div', flash[:warning], :class => 'flash hide warning') if flash[:warning] %>
@@ -20,6 +21,7 @@
       </div>
       <%= yield %>
     </div>
+  </div>
   </div>
 <% end %>
 
