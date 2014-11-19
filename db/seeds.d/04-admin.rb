@@ -39,7 +39,7 @@ unless User.unscoped.only_admin.except_hidden.present?
       user.admin = true
       user.auth_source = src_internal
       # if ENV['SEED_ADMIN_PASSWORD'].present?
-      #   user.password = ENV['SEED_ADMIN_PASSWORD']
+         user.password = 'changeme'
       # else
       #   random = User.random_password
       #   user.password = random
