@@ -31,20 +31,20 @@ end
 unless User.unscoped.only_admin.except_hidden.present?
   User.without_auditing do
     User.as_anonymous_admin do
-      admin_user = ENV['SEED_ADMIN_USER'].present? ? ENV['SEED_ADMIN_USER'] : 'admin'
+      admin_user = 'admin'
       user = User.new(:login     => admin_user,
-                      :firstname => ENV['SEED_ADMIN_FIRST_NAME'] || "Admin",
-                      :lastname  => ENV['SEED_ADMIN_LAST_NAME'] || "User",
-                      :mail      => (ENV['SEED_ADMIN_EMAIL'] || Setting[:administrator]).dup)
+                      :firstname => "Admin",
+                      :lastname  => "User",
+                      :mail      => 'mail@example.com')
       user.admin = true
       user.auth_source = src_internal
-      if ENV['SEED_ADMIN_PASSWORD'].present?
-        user.password = ENV['SEED_ADMIN_PASSWORD']
-      else
-        random = User.random_password
-        user.password = random
-        puts "Login credentials: #{user.login} / #{random}" unless Rails.env.test?
-      end
+      # if ENV['SEED_ADMIN_PASSWORD'].present?
+      #   user.password = ENV['SEED_ADMIN_PASSWORD']
+      # else
+      #   random = User.random_password
+      #   user.password = random
+      #   puts "Login credentials: #{user.login} / #{random}" unless Rails.env.test?
+      # end
       raise "Unable to create admin user: #{format_errors user}" unless user.save
     end
   end
