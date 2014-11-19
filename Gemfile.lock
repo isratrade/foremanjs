@@ -1,5 +1,6 @@
-PATH
-  remote: ../katello
+GIT
+  remote: git@github.com:isratrade/katello.git
+  revision: c0b2b52a89e567471a6f8a6a09fcad31d51cc281
   specs:
     katello (2.1.0)
       anemone
