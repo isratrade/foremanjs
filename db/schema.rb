@@ -137,6 +137,7 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
     t.datetime "created_at",  :null => false
     t.datetime "updated_at",  :null => false
     t.text     "attrs"
+    t.string   "email"
   end
 
   create_table "config_group_classes", :force => true do |t|
@@ -172,6 +173,49 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
     t.integer "operatingsystem_id", :null => false
   end
 
+  create_table "containers", :force => true do |t|
+    t.string   "name"
+    t.string   "command"
+    t.datetime "created_at",                            :null => false
+    t.datetime "updated_at",                            :null => false
+    t.integer  "compute_resource_id"
+    t.string   "entrypoint"
+    t.string   "cpu_set"
+    t.float    "cpu_shares"
+    t.string   "memory"
+    t.boolean  "tty"
+    t.boolean  "attach_stdin",        :default => true
+    t.boolean  "attach_stdout",       :default => true
+    t.boolean  "attach_stderr",       :default => true
+    t.integer  "docker_image_id"
+    t.integer  "docker_tag_id"
+    t.string   "uuid"
+  end
+
+  add_index "containers", ["uuid", "compute_resource_id"], :name => "index_containers_on_uuid_and_compute_resource_id"
+
+  create_table "docker_images", :force => true do |t|
+    t.string   "image_id"
+    t.integer  "size"
+    t.datetime "created_at",            :null => false
+    t.datetime "updated_at",            :null => false
+    t.string   "katello_uuid"
+    t.integer  "katello_repository_id"
+  end
+
+  add_index "docker_images", ["katello_uuid"], :name => "index_docker_images_on_katello_uuid", :unique => true
+
+  create_table "docker_tags", :force => true do |t|
+    t.string   "tag"
+    t.integer  "docker_image_id",       :null => false
+    t.datetime "created_at",            :null => false
+    t.datetime "updated_at",            :null => false
+    t.integer  "katello_repository_id"
+  end
+
+  add_index "docker_tags", ["docker_image_id", "katello_repository_id", "tag"], :name => "katello_repo_docker_tags_image_repo_id", :unique => true
+  add_index "docker_tags", ["tag", "katello_repository_id"], :name => "katello_docker_tag_repository_id", :unique => true
+
   create_table "domains", :force => true do |t|
     t.string   "name",             :default => "", :null => false
     t.string   "fullname"
@@ -197,7 +241,10 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
     t.datetime "updated_at",                      :null => false
     t.integer  "hosts_count",      :default => 0
     t.integer  "hostgroups_count", :default => 0
+    t.string   "katello_id"
   end
+
+  add_index "environments", ["katello_id"], :name => "index_environments_on_katello_id"
 
   create_table "external_usergroups", :force => true do |t|
     t.string  "name",           :null => false
@@ -261,6 +308,28 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
     t.text     "taxonomy_search"
   end
 
+  create_table "foreman_tasks_locks", :force => true do |t|
+    t.string  "task_id",       :null => false
+    t.string  "name",          :null => false
+    t.string  "resource_type"
+    t.integer "resource_id"
+    t.boolean "exclusive"
+  end
+
+  add_index "foreman_tasks_locks", ["resource_type", "resource_id"], :name => "index_foreman_tasks_locks_on_resource_type_and_resource_id"
+
+  create_table "foreman_tasks_tasks", :id => false, :force => true do |t|
+    t.string   "id"
+    t.string   "type",           :null => false
+    t.string   "label"
+    t.datetime "started_at"
+    t.datetime "ended_at"
+    t.string   "state",          :null => false
+    t.string   "result",         :null => false
+    t.string   "external_id"
+    t.string   "parent_task_id"
+  end
+
   create_table "host_classes", :force => true do |t|
     t.integer "puppetclass_id", :null => false
     t.integer "host_id",        :null => false
@@ -304,10 +373,12 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
     t.integer  "realm_id"
     t.integer  "compute_profile_id"
     t.string   "grub_pass",                         :default => ""
+    t.integer  "content_source_id"
   end
 
   add_index "hostgroups", ["ancestry"], :name => "index_hostgroups_on_ancestry"
   add_index "hostgroups", ["compute_profile_id"], :name => "index_hostgroups_on_compute_profile_id"
+  add_index "hostgroups", ["content_source_id"], :name => "index_hostgroups_on_content_source_id"
 
   create_table "hosts", :force => true do |t|
     t.string   "name",                                                  :null => false
@@ -356,11 +427,13 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
     t.string   "provision_method"
     t.string   "primary_interface"
     t.string   "grub_pass",                          :default => ""
+    t.integer  "content_source_id"
   end
 
   add_index "hosts", ["architecture_id"], :name => "host_arch_id_ix"
   add_index "hosts", ["certname"], :name => "index_hosts_on_certname"
   add_index "hosts", ["compute_profile_id"], :name => "index_hosts_on_compute_profile_id"
+  add_index "hosts", ["content_source_id"], :name => "index_hosts_on_content_source_id"
   add_index "hosts", ["domain_id"], :name => "host_domain_id_ix"
   add_index "hosts", ["environment_id"], :name => "host_env_id_ix"
   add_index "hosts", ["hostgroup_id"], :name => "host_group_id_ix"
@@ -386,6 +459,564 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
     t.boolean  "user_data",           :default => false
     t.string   "password"
   end
+
+  create_table "katello_activation_keys", :force => true do |t|
+    t.string   "name"
+    t.text     "description"
+    t.integer  "organization_id",                           :null => false
+    t.integer  "environment_id"
+    t.datetime "created_at",                                :null => false
+    t.datetime "updated_at",                                :null => false
+    t.integer  "user_id"
+    t.integer  "max_content_hosts"
+    t.integer  "content_view_id"
+    t.string   "cp_id"
+    t.string   "release_version"
+    t.boolean  "unlimited_content_hosts", :default => true
+  end
+
+  add_index "katello_activation_keys", ["content_view_id"], :name => "index_activation_keys_on_content_view_id"
+  add_index "katello_activation_keys", ["cp_id"], :name => "index_katello_activation_keys_on_cp_id"
+  add_index "katello_activation_keys", ["environment_id"], :name => "index_activation_keys_on_environment_id"
+  add_index "katello_activation_keys", ["name", "organization_id"], :name => "index_activation_keys_on_name_and_organization_id", :unique => true
+  add_index "katello_activation_keys", ["organization_id"], :name => "index_activation_keys_on_organization_id"
+  add_index "katello_activation_keys", ["user_id"], :name => "index_activation_keys_on_user_id"
+
+  create_table "katello_capsule_lifecycle_environments", :force => true do |t|
+    t.integer "capsule_id"
+    t.integer "lifecycle_environment_id"
+  end
+
+  add_index "katello_capsule_lifecycle_environments", ["capsule_id"], :name => "index_cle_on_capsule_id"
+  add_index "katello_capsule_lifecycle_environments", ["lifecycle_environment_id"], :name => "index_cle_on_lifecycle_environment_id"
+
+  create_table "katello_content_view_components", :force => true do |t|
+    t.integer  "content_view_version_id"
+    t.integer  "content_view_id"
+    t.datetime "created_at",              :null => false
+    t.datetime "updated_at",              :null => false
+  end
+
+  add_index "katello_content_view_components", ["content_view_version_id", "content_view_id"], :name => "component_content_views_index"
+
+  create_table "katello_content_view_environments", :force => true do |t|
+    t.string   "name"
+    t.string   "label",                   :null => false
+    t.string   "cp_id"
+    t.integer  "content_view_id"
+    t.datetime "created_at",              :null => false
+    t.datetime "updated_at",              :null => false
+    t.integer  "environment_id",          :null => false
+    t.integer  "content_view_version_id"
+  end
+
+  add_index "katello_content_view_environments", ["content_view_id"], :name => "index_content_view_environments_on_content_view_id"
+  add_index "katello_content_view_environments", ["cp_id"], :name => "index_cve_cp_id", :unique => true
+  add_index "katello_content_view_environments", ["environment_id", "content_view_id"], :name => "index_cve_eid_cv_id", :unique => true
+  add_index "katello_content_view_environments", ["environment_id"], :name => "index_content_view_environments_on_environment_id"
+
+  create_table "katello_content_view_erratum_filter_rules", :force => true do |t|
+    t.integer  "content_view_filter_id"
+    t.string   "errata_id"
+    t.string   "start_date"
+    t.string   "end_date"
+    t.string   "types"
+    t.datetime "created_at",             :null => false
+    t.datetime "updated_at",             :null => false
+  end
+
+  create_table "katello_content_view_filters", :force => true do |t|
+    t.integer  "content_view_id"
+    t.string   "name",                                 :null => false
+    t.datetime "created_at",                           :null => false
+    t.datetime "updated_at",                           :null => false
+    t.string   "type"
+    t.boolean  "inclusion",         :default => false, :null => false
+    t.boolean  "original_packages", :default => false, :null => false
+    t.string   "description"
+  end
+
+  add_index "katello_content_view_filters", ["content_view_id"], :name => "index_filters_on_content_view_definition_id"
+  add_index "katello_content_view_filters", ["name", "content_view_id"], :name => "index_filters_on_name_and_content_view_definition_id", :unique => true
+
+  create_table "katello_content_view_filters_repositories", :id => false, :force => true do |t|
+    t.integer "content_view_filter_id"
+    t.integer "repository_id"
+  end
+
+  add_index "katello_content_view_filters_repositories", ["content_view_filter_id", "repository_id"], :name => "index_filters_repositories_on_filter_id_and_repository_id", :unique => true
+  add_index "katello_content_view_filters_repositories", ["content_view_filter_id"], :name => "index_filters_repositories_on_filter_id"
+  add_index "katello_content_view_filters_repositories", ["repository_id"], :name => "index_filters_repositories_on_repository_id"
+
+  create_table "katello_content_view_histories", :force => true do |t|
+    t.integer  "katello_content_view_version_id", :null => false
+    t.integer  "katello_environment_id"
+    t.string   "task_id"
+    t.string   "user",                            :null => false
+    t.string   "status",                          :null => false
+    t.text     "notes"
+    t.datetime "created_at",                      :null => false
+    t.datetime "updated_at",                      :null => false
+  end
+
+  add_index "katello_content_view_histories", ["katello_content_view_version_id"], :name => "index_cvh_cvvid"
+  add_index "katello_content_view_histories", ["katello_environment_id"], :name => "index_cvh_environment_id"
+
+  create_table "katello_content_view_package_filter_rules", :force => true do |t|
+    t.integer  "content_view_filter_id"
+    t.string   "name"
+    t.string   "version"
+    t.string   "min_version"
+    t.string   "max_version"
+    t.datetime "created_at",             :null => false
+    t.datetime "updated_at",             :null => false
+  end
+
+  create_table "katello_content_view_package_group_filter_rules", :force => true do |t|
+    t.integer  "content_view_filter_id"
+    t.string   "name"
+    t.datetime "created_at",             :null => false
+    t.datetime "updated_at",             :null => false
+    t.string   "uuid"
+  end
+
+  create_table "katello_content_view_puppet_environments", :force => true do |t|
+    t.integer  "content_view_version_id"
+    t.integer  "environment_id"
+    t.string   "name"
+    t.string   "pulp_id",                 :null => false
+    t.datetime "created_at",              :null => false
+    t.datetime "updated_at",              :null => false
+    t.integer  "puppet_environment_id"
+  end
+
+  add_index "katello_content_view_puppet_environments", ["content_view_version_id"], :name => "index_cvpe_on_content_view_version_id"
+  add_index "katello_content_view_puppet_environments", ["environment_id"], :name => "index_cvpe_on_environment_id"
+  add_index "katello_content_view_puppet_environments", ["pulp_id"], :name => "index_cvpe_on_pulp_id"
+
+  create_table "katello_content_view_puppet_modules", :force => true do |t|
+    t.integer  "content_view_id"
+    t.string   "name"
+    t.string   "author"
+    t.string   "uuid"
+    t.datetime "created_at",      :null => false
+    t.datetime "updated_at",      :null => false
+  end
+
+  add_index "katello_content_view_puppet_modules", ["content_view_id"], :name => "index_katello_content_view_puppet_modules_on_content_view_id"
+  add_index "katello_content_view_puppet_modules", ["name", "author", "content_view_id"], :name => "katello_cv_puppet_modules_name_author", :unique => true
+  add_index "katello_content_view_puppet_modules", ["name", "content_view_id"], :name => "katello_cv_puppet_modules_name", :unique => true
+  add_index "katello_content_view_puppet_modules", ["uuid", "content_view_id"], :name => "katello_cv_puppet_modules_uuid", :unique => true
+
+  create_table "katello_content_view_repositories", :force => true do |t|
+    t.integer  "content_view_id"
+    t.integer  "repository_id"
+    t.datetime "created_at",      :null => false
+    t.datetime "updated_at",      :null => false
+  end
+
+  add_index "katello_content_view_repositories", ["content_view_id", "repository_id"], :name => "cvd_repo_index"
+
+  create_table "katello_content_view_versions", :force => true do |t|
+    t.integer  "content_view_id"
+    t.integer  "version",               :null => false
+    t.datetime "created_at",            :null => false
+    t.datetime "updated_at",            :null => false
+    t.integer  "definition_archive_id"
+    t.text     "description"
+  end
+
+  add_index "katello_content_view_versions", ["id", "content_view_id"], :name => "cvv_cv_index"
+
+  create_table "katello_content_views", :force => true do |t|
+    t.string   "name"
+    t.string   "label",                              :null => false
+    t.string   "description"
+    t.integer  "organization_id"
+    t.boolean  "default",         :default => false, :null => false
+    t.datetime "created_at",                         :null => false
+    t.datetime "updated_at",                         :null => false
+    t.boolean  "composite"
+    t.integer  "next_version",    :default => 1,     :null => false
+  end
+
+  add_index "katello_content_views", ["name", "organization_id"], :name => "index_content_views_on_name_and_organization_id"
+  add_index "katello_content_views", ["organization_id", "label"], :name => "index_content_views_on_organization_id_and_label", :unique => true
+  add_index "katello_content_views", ["organization_id"], :name => "index_content_views_on_organization_id"
+
+  create_table "katello_custom_info", :force => true do |t|
+    t.string   "keyname"
+    t.string   "value",           :default => ""
+    t.integer  "informable_id"
+    t.string   "informable_type"
+    t.datetime "created_at",                         :null => false
+    t.datetime "updated_at",                         :null => false
+    t.boolean  "org_default",     :default => false
+  end
+
+  add_index "katello_custom_info", ["informable_type", "informable_id", "keyname"], :name => "index_custom_info_on_type_id_keyname"
+
+  create_table "katello_distributors", :force => true do |t|
+    t.string   "uuid"
+    t.string   "name"
+    t.text     "description"
+    t.string   "location"
+    t.integer  "environment_id"
+    t.datetime "created_at",      :null => false
+    t.datetime "updated_at",      :null => false
+    t.integer  "content_view_id"
+  end
+
+  add_index "katello_distributors", ["content_view_id"], :name => "index_distributors_on_content_view_id"
+  add_index "katello_distributors", ["environment_id"], :name => "index_distributors_on_environment_id"
+
+  create_table "katello_environment_priors", :id => false, :force => true do |t|
+    t.integer "environment_id"
+    t.integer "prior_id",       :null => false
+  end
+
+  add_index "katello_environment_priors", ["environment_id"], :name => "index_environment_priors_on_environment_id"
+  add_index "katello_environment_priors", ["prior_id"], :name => "index_environment_priors_on_prior_id"
+
+  create_table "katello_environments", :force => true do |t|
+    t.string   "name",                               :null => false
+    t.text     "description"
+    t.boolean  "library",         :default => false, :null => false
+    t.integer  "organization_id",                    :null => false
+    t.datetime "created_at",                         :null => false
+    t.datetime "updated_at",                         :null => false
+    t.string   "label",                              :null => false
+  end
+
+  add_index "katello_environments", ["label", "organization_id"], :name => "index_environments_on_label_and_organization_id", :unique => true
+  add_index "katello_environments", ["name", "organization_id"], :name => "index_environments_on_name_and_organization_id", :unique => true
+  add_index "katello_environments", ["organization_id"], :name => "index_environments_on_organization_id"
+
+  create_table "katello_errata", :force => true do |t|
+    t.string   "uuid",             :null => false
+    t.string   "errata_id"
+    t.datetime "created_at",       :null => false
+    t.datetime "updated_at",       :null => false
+    t.datetime "issued"
+    t.datetime "updated"
+    t.string   "errata_type"
+    t.string   "severity"
+    t.string   "title"
+    t.text     "solution"
+    t.text     "description"
+    t.text     "summary"
+    t.boolean  "reboot_suggested"
+  end
+
+  add_index "katello_errata", ["uuid"], :name => "index_katello_errata_on_uuid", :unique => true
+
+  create_table "katello_erratum_bugzillas", :force => true do |t|
+    t.integer "erratum_id", :null => false
+    t.string  "bug_id",     :null => false
+    t.string  "href"
+  end
+
+  add_index "katello_erratum_bugzillas", ["erratum_id", "bug_id", "href"], :name => "katello_erratum_bz_eid_bid_href", :unique => true
+
+  create_table "katello_erratum_cves", :force => true do |t|
+    t.integer "erratum_id", :null => false
+    t.string  "cve_id",     :null => false
+    t.string  "href"
+  end
+
+  add_index "katello_erratum_cves", ["erratum_id", "cve_id", "href"], :name => "index_katello_erratum_cves_on_erratum_id_and_cve_id_and_href", :unique => true
+
+  create_table "katello_erratum_packages", :force => true do |t|
+    t.integer "erratum_id", :null => false
+    t.string  "nvrea",      :null => false
+    t.string  "name",       :null => false
+    t.string  "filename"
+  end
+
+  add_index "katello_erratum_packages", ["erratum_id", "nvrea", "name", "filename"], :name => "katello_erratum_packages_eid_nvrea_n_f", :unique => true
+
+  create_table "katello_gpg_keys", :force => true do |t|
+    t.string   "name",            :null => false
+    t.integer  "organization_id", :null => false
+    t.text     "content",         :null => false
+    t.datetime "created_at",      :null => false
+    t.datetime "updated_at",      :null => false
+  end
+
+  add_index "katello_gpg_keys", ["organization_id", "name"], :name => "index_gpg_keys_on_organization_id_and_name", :unique => true
+
+  create_table "katello_help_tips", :force => true do |t|
+    t.string   "key"
+    t.integer  "user_id"
+    t.datetime "created_at", :null => false
+    t.datetime "updated_at", :null => false
+  end
+
+  add_index "katello_help_tips", ["user_id"], :name => "index_help_tips_on_user_id"
+
+  create_table "katello_host_collections", :force => true do |t|
+    t.string   "name",                                      :null => false
+    t.text     "description"
+    t.integer  "max_content_hosts"
+    t.integer  "organization_id",                           :null => false
+    t.datetime "created_at",                                :null => false
+    t.datetime "updated_at",                                :null => false
+    t.boolean  "unlimited_content_hosts", :default => true
+  end
+
+  add_index "katello_host_collections", ["name", "organization_id"], :name => "index_host_collections_on_name_and_organization_id", :unique => true
+  add_index "katello_host_collections", ["organization_id"], :name => "index_host_collections_on_organization_id"
+
+  create_table "katello_job_tasks", :force => true do |t|
+    t.integer "job_id"
+    t.integer "task_status_id"
+  end
+
+  add_index "katello_job_tasks", ["job_id"], :name => "index_job_tasks_on_job_id"
+  add_index "katello_job_tasks", ["task_status_id"], :name => "index_job_tasks_on_task_status_id"
+
+  create_table "katello_jobs", :force => true do |t|
+    t.integer "job_owner_id"
+    t.string  "job_owner_type"
+    t.string  "pulp_id",        :null => false
+  end
+
+  add_index "katello_jobs", ["job_owner_id"], :name => "index_jobs_on_job_owner_id"
+  add_index "katello_jobs", ["pulp_id"], :name => "index_jobs_on_pulp_id"
+
+  create_table "katello_key_host_collections", :force => true do |t|
+    t.integer "activation_key_id"
+    t.integer "host_collection_id"
+  end
+
+  add_index "katello_key_host_collections", ["activation_key_id"], :name => "index_key_host_collections_on_activation_key_id"
+  add_index "katello_key_host_collections", ["host_collection_id"], :name => "index_key_host_collections_on_host_collection_id"
+
+  create_table "katello_marketing_engineering_products", :force => true do |t|
+    t.integer "marketing_product_id"
+    t.integer "engineering_product_id"
+  end
+
+  add_index "katello_marketing_engineering_products", ["engineering_product_id"], :name => "index_marketing_engineering_products_on_engineering_product_id"
+  add_index "katello_marketing_engineering_products", ["marketing_product_id"], :name => "index_marketing_engineering_products_on_marketing_product_id"
+
+  create_table "katello_notices", :force => true do |t|
+    t.string   "text",            :limit => 1024,                    :null => false
+    t.text     "details"
+    t.boolean  "global",                          :default => false, :null => false
+    t.string   "level",                                              :null => false
+    t.datetime "created_at",                                         :null => false
+    t.datetime "updated_at",                                         :null => false
+    t.string   "request_type"
+    t.integer  "organization_id"
+  end
+
+  add_index "katello_notices", ["organization_id"], :name => "index_notices_on_organization_id"
+
+  create_table "katello_pools", :force => true do |t|
+    t.string   "cp_id",      :null => false
+    t.datetime "created_at", :null => false
+    t.datetime "updated_at", :null => false
+  end
+
+  add_index "katello_pools", ["cp_id"], :name => "index_pools_on_cp_id"
+
+  create_table "katello_products", :force => true do |t|
+    t.string   "name"
+    t.text     "description"
+    t.string   "cp_id"
+    t.integer  "multiplier"
+    t.integer  "provider_id",                                     :null => false
+    t.datetime "created_at",                                      :null => false
+    t.datetime "updated_at",                                      :null => false
+    t.integer  "gpg_key_id"
+    t.string   "type",            :default => "Katello::Product", :null => false
+    t.integer  "sync_plan_id"
+    t.string   "label",                                           :null => false
+    t.integer  "organization_id",                                 :null => false
+  end
+
+  add_index "katello_products", ["cp_id"], :name => "index_products_on_cp_id"
+  add_index "katello_products", ["gpg_key_id"], :name => "index_products_on_gpg_key_id"
+  add_index "katello_products", ["organization_id"], :name => "index_katello_products_on_organization_id"
+  add_index "katello_products", ["provider_id"], :name => "index_products_on_provider_id"
+  add_index "katello_products", ["sync_plan_id"], :name => "index_products_on_sync_plan_id"
+
+  create_table "katello_providers", :force => true do |t|
+    t.string   "name"
+    t.text     "description"
+    t.string   "repository_url"
+    t.string   "provider_type"
+    t.integer  "organization_id"
+    t.datetime "created_at",          :null => false
+    t.datetime "updated_at",          :null => false
+    t.integer  "task_status_id"
+    t.string   "docker_registry_url"
+  end
+
+  add_index "katello_providers", ["name", "organization_id"], :name => "index_providers_on_name_and_organization_id", :unique => true
+  add_index "katello_providers", ["organization_id"], :name => "index_providers_on_organization_id"
+  add_index "katello_providers", ["task_status_id"], :name => "index_providers_on_task_status_id"
+
+  create_table "katello_repositories", :force => true do |t|
+    t.string   "name"
+    t.string   "pulp_id",                                       :null => false
+    t.datetime "created_at",                                    :null => false
+    t.datetime "updated_at",                                    :null => false
+    t.integer  "major"
+    t.string   "minor"
+    t.integer  "gpg_key_id"
+    t.string   "cp_label"
+    t.integer  "library_instance_id"
+    t.string   "content_id"
+    t.string   "arch",                    :default => "noarch", :null => false
+    t.string   "label",                                         :null => false
+    t.integer  "content_view_version_id",                       :null => false
+    t.string   "relative_path",                                 :null => false
+    t.string   "url"
+    t.boolean  "unprotected",             :default => false,    :null => false
+    t.string   "content_type",            :default => "yum",    :null => false
+    t.integer  "product_id"
+    t.integer  "environment_id"
+    t.string   "checksum_type"
+  end
+
+  add_index "katello_repositories", ["content_view_version_id"], :name => "index_repositories_on_content_view_version_id"
+  add_index "katello_repositories", ["cp_label"], :name => "index_repositories_on_cp_label"
+  add_index "katello_repositories", ["environment_id"], :name => "index_repositories_on_environment_id"
+  add_index "katello_repositories", ["gpg_key_id"], :name => "index_repositories_on_gpg_key_id"
+  add_index "katello_repositories", ["library_instance_id"], :name => "index_repositories_on_library_instance_id"
+  add_index "katello_repositories", ["product_id"], :name => "index_repositories_on_product_id"
+  add_index "katello_repositories", ["pulp_id"], :name => "index_repositories_on_pulp_id"
+
+  create_table "katello_repository_docker_images", :force => true do |t|
+    t.integer "docker_image_id", :null => false
+    t.integer "repository_id"
+  end
+
+  add_index "katello_repository_docker_images", ["docker_image_id", "repository_id"], :name => "katello_repo_docker_imgs_image_repo_id", :unique => true
+
+  create_table "katello_repository_errata", :force => true do |t|
+    t.integer "erratum_id",    :null => false
+    t.integer "repository_id"
+  end
+
+  add_index "katello_repository_errata", ["erratum_id", "repository_id"], :name => "index_katello_repository_errata_on_erratum_id_and_repository_id", :unique => true
+
+  create_table "katello_search_favorites", :force => true do |t|
+    t.string   "params"
+    t.string   "path"
+    t.integer  "user_id"
+    t.datetime "created_at", :null => false
+    t.datetime "updated_at", :null => false
+  end
+
+  add_index "katello_search_favorites", ["user_id"], :name => "index_search_favorites_on_user_id"
+
+  create_table "katello_search_histories", :force => true do |t|
+    t.string   "params"
+    t.string   "path"
+    t.integer  "user_id"
+    t.datetime "created_at", :null => false
+    t.datetime "updated_at", :null => false
+  end
+
+  add_index "katello_search_histories", ["user_id"], :name => "index_search_histories_on_user_id"
+
+  create_table "katello_sync_plans", :force => true do |t|
+    t.string   "name"
+    t.text     "description"
+    t.datetime "sync_date"
+    t.string   "interval"
+    t.integer  "organization_id",                   :null => false
+    t.datetime "created_at",                        :null => false
+    t.datetime "updated_at",                        :null => false
+    t.boolean  "enabled",         :default => true, :null => false
+  end
+
+  add_index "katello_sync_plans", ["name", "organization_id"], :name => "index_sync_plans_on_name_and_organization_id", :unique => true
+  add_index "katello_sync_plans", ["organization_id"], :name => "index_sync_plans_on_organization_id"
+
+  create_table "katello_system_activation_keys", :force => true do |t|
+    t.integer "system_id"
+    t.integer "activation_key_id"
+  end
+
+  add_index "katello_system_activation_keys", ["activation_key_id"], :name => "index_system_activation_keys_on_activation_key_id"
+  add_index "katello_system_activation_keys", ["system_id"], :name => "index_system_activation_keys_on_system_id"
+
+  create_table "katello_system_errata", :force => true do |t|
+    t.integer "erratum_id", :null => false
+    t.integer "system_id",  :null => false
+  end
+
+  add_index "katello_system_errata", ["erratum_id", "system_id"], :name => "katello_system_errata_eid_sid", :unique => true
+
+  create_table "katello_system_host_collections", :force => true do |t|
+    t.integer  "system_id"
+    t.integer  "host_collection_id"
+    t.datetime "created_at",         :null => false
+    t.datetime "updated_at",         :null => false
+  end
+
+  add_index "katello_system_host_collections", ["host_collection_id"], :name => "index_system_host_collections_on_host_collection_id"
+  add_index "katello_system_host_collections", ["system_id"], :name => "index_system_host_collections_on_system_id"
+
+  create_table "katello_system_repositories", :force => true do |t|
+    t.integer "system_id",     :null => false
+    t.integer "repository_id"
+  end
+
+  add_index "katello_system_repositories", ["system_id", "repository_id"], :name => "katello_system_repositories_sid_rid", :unique => true
+
+  create_table "katello_systems", :force => true do |t|
+    t.string   "uuid"
+    t.string   "name"
+    t.text     "description"
+    t.string   "location"
+    t.integer  "environment_id"
+    t.datetime "created_at",                                     :null => false
+    t.datetime "updated_at",                                     :null => false
+    t.string   "type",            :default => "Katello::System"
+    t.integer  "content_view_id"
+    t.integer  "host_id"
+  end
+
+  add_index "katello_systems", ["content_view_id"], :name => "index_systems_on_content_view_id"
+  add_index "katello_systems", ["environment_id"], :name => "index_systems_on_environment_id"
+  add_index "katello_systems", ["host_id"], :name => "index_katello_systems_on_host_id"
+
+  create_table "katello_task_statuses", :force => true do |t|
+    t.string   "type"
+    t.integer  "organization_id"
+    t.string   "uuid",                           :null => false
+    t.string   "state"
+    t.text     "result"
+    t.text     "progress"
+    t.datetime "start_time"
+    t.datetime "finish_time"
+    t.datetime "created_at",                     :null => false
+    t.datetime "updated_at",                     :null => false
+    t.text     "parameters"
+    t.string   "task_type"
+    t.integer  "user_id",         :default => 0, :null => false
+    t.integer  "task_owner_id"
+    t.string   "task_owner_type"
+  end
+
+  add_index "katello_task_statuses", ["organization_id"], :name => "index_task_statuses_on_organization_id"
+  add_index "katello_task_statuses", ["task_owner_id"], :name => "index_task_statuses_on_task_owner_id"
+  add_index "katello_task_statuses", ["user_id"], :name => "index_task_statuses_on_user_id"
+  add_index "katello_task_statuses", ["uuid"], :name => "index_task_statuses_on_uuid"
+
+  create_table "katello_user_notices", :force => true do |t|
+    t.integer "user_id"
+    t.integer "notice_id"
+    t.boolean "viewed",    :default => false, :null => false
+  end
+
+  add_index "katello_user_notices", ["notice_id"], :name => "index_user_notices_on_notice_id"
+  add_index "katello_user_notices", ["user_id"], :name => "index_user_notices_on_user_id"
 
   create_table "key_pairs", :force => true do |t|
     t.text     "secret"
@@ -716,14 +1347,20 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
   create_table "taxonomies", :force => true do |t|
     t.string   "name"
     t.string   "type"
-    t.datetime "created_at",   :null => false
-    t.datetime "updated_at",   :null => false
+    t.datetime "created_at",                           :null => false
+    t.datetime "updated_at",                           :null => false
     t.text     "ignore_types"
     t.string   "ancestry"
     t.string   "title"
+    t.text     "description"
+    t.string   "label"
+    t.text     "default_info"
+    t.integer  "apply_info_task_id"
+    t.boolean  "katello_default",    :default => true, :null => false
   end
 
   add_index "taxonomies", ["ancestry"], :name => "index_taxonomies_on_ancestry"
+  add_index "taxonomies", ["label"], :name => "index_organizations_on_cp_key", :unique => true
 
   create_table "template_combinations", :force => true do |t|
     t.integer  "config_template_id"
@@ -822,6 +1459,11 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
     t.integer  "default_location_id"
     t.string   "lower_login"
     t.boolean  "mail_enabled",                           :default => true
+    t.boolean  "helptips_enabled",                       :default => true
+    t.integer  "page_size",                              :default => 25,    :null => false
+    t.boolean  "disabled",                               :default => false
+    t.text     "preferences"
+    t.string   "remote_id"
   end
 
   add_index "users", ["lower_login"], :name => "index_users_on_lower_login", :unique => true
@@ -838,6 +1480,12 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
 
   add_foreign_key "config_templates_operatingsystems", "config_templates", :name => "config_templates_operatingsystems_config_template_id_fk"
   add_foreign_key "config_templates_operatingsystems", "operatingsystems", :name => "config_templates_operatingsystems_operatingsystem_id_fk"
+
+  add_foreign_key "containers", "docker_images", :name => "containers_docker_image_id_fk"
+  add_foreign_key "containers", "docker_tags", :name => "containers_docker_tag_id_fk"
+
+  add_foreign_key "docker_tags", "docker_images", :name => "docker_tags_docker_image_id_fk"
+  add_foreign_key "docker_tags", "katello_repositories", :name => "docker_tags_katello_repository_id_fk"
 
   add_foreign_key "domains", "smart_proxies", :name => "domains_dns_id_fk", :column => "dns_id"
 
@@ -873,6 +1521,7 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
   add_foreign_key "hostgroups", "operatingsystems", :name => "hostgroups_operatingsystem_id_fk"
   add_foreign_key "hostgroups", "ptables", :name => "hostgroups_ptable_id_fk"
   add_foreign_key "hostgroups", "realms", :name => "hostgroups_realms_id_fk"
+  add_foreign_key "hostgroups", "smart_proxies", :name => "hostgroups_content_source_id_fk", :column => "content_source_id"
   add_foreign_key "hostgroups", "smart_proxies", :name => "hostgroups_puppet_ca_proxy_id_fk", :column => "puppet_ca_proxy_id"
   add_foreign_key "hostgroups", "smart_proxies", :name => "hostgroups_puppet_proxy_id_fk", :column => "puppet_proxy_id"
   add_foreign_key "hostgroups", "subnets", :name => "hostgroups_subnet_id_fk"
@@ -889,6 +1538,7 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
   add_foreign_key "hosts", "operatingsystems", :name => "hosts_operatingsystem_id_fk"
   add_foreign_key "hosts", "ptables", :name => "hosts_ptable_id_fk"
   add_foreign_key "hosts", "realms", :name => "hosts_realms_id_fk"
+  add_foreign_key "hosts", "smart_proxies", :name => "hosts_content_source_id_fk", :column => "content_source_id"
   add_foreign_key "hosts", "smart_proxies", :name => "hosts_puppet_ca_proxy_id_fk", :column => "puppet_ca_proxy_id"
   add_foreign_key "hosts", "smart_proxies", :name => "hosts_puppet_proxy_id_fk", :column => "puppet_proxy_id"
   add_foreign_key "hosts", "subnets", :name => "hosts_subnet_id_fk"
@@ -898,6 +1548,131 @@ ActiveRecord::Schema.define(:version => 20141112165600) do
   add_foreign_key "images", "architectures", :name => "images_architecture_id_fk"
   add_foreign_key "images", "compute_resources", :name => "images_compute_resource_id_fk"
   add_foreign_key "images", "operatingsystems", :name => "images_operatingsystem_id_fk"
+
+  add_foreign_key "katello_activation_keys", "katello_content_views", :name => "activation_keys_content_view_id_fk", :column => "content_view_id"
+  add_foreign_key "katello_activation_keys", "katello_environments", :name => "activation_keys_environment_id_fk", :column => "environment_id"
+  add_foreign_key "katello_activation_keys", "taxonomies", :name => "katello_activation_keys_organization_fk", :column => "organization_id"
+  add_foreign_key "katello_activation_keys", "users", :name => "activation_keys_user_id_fk"
+
+  add_foreign_key "katello_capsule_lifecycle_environments", "katello_environments", :name => "katello_capsule_lifecycle_environments_environment_fk", :column => "lifecycle_environment_id"
+  add_foreign_key "katello_capsule_lifecycle_environments", "smart_proxies", :name => "katello_capsule_lifecycle_environments_capsule_fk", :column => "capsule_id"
+
+  add_foreign_key "katello_content_view_components", "katello_content_view_versions", :name => "katello_content_view_components_version_fk", :column => "content_view_version_id"
+  add_foreign_key "katello_content_view_components", "katello_content_views", :name => "component_content_views_content_view_id_fk", :column => "content_view_id"
+  add_foreign_key "katello_content_view_components", "katello_content_views", :name => "katello_content_view_components_view_fk", :column => "content_view_id"
+
+  add_foreign_key "katello_content_view_environments", "katello_content_view_versions", :name => "katello_content_view_environments_version_fk", :column => "content_view_version_id"
+  add_foreign_key "katello_content_view_environments", "katello_content_views", :name => "content_view_environments_content_view_id_fk", :column => "content_view_id"
+  add_foreign_key "katello_content_view_environments", "katello_environments", :name => "content_view_environments_environment_id_fk", :column => "environment_id"
+
+  add_foreign_key "katello_content_view_erratum_filter_rules", "katello_content_view_filters", :name => "katello_content_view_erratum_filter_rules_filter_fk", :column => "content_view_filter_id"
+
+  add_foreign_key "katello_content_view_filters", "katello_content_views", :name => "katello_content_view_filters_view_fk", :column => "content_view_id"
+
+  add_foreign_key "katello_content_view_filters_repositories", "katello_content_view_filters", :name => "filters_repositories_filter_id_fk", :column => "content_view_filter_id"
+  add_foreign_key "katello_content_view_filters_repositories", "katello_content_view_filters", :name => "katello_content_view_filters_repositories_filter_fk", :column => "content_view_filter_id"
+  add_foreign_key "katello_content_view_filters_repositories", "katello_repositories", :name => "filters_repositories_repository_id_fk", :column => "repository_id"
+  add_foreign_key "katello_content_view_filters_repositories", "katello_repositories", :name => "katello_content_view_filters_repositories_repository_fk", :column => "repository_id"
+
+  add_foreign_key "katello_content_view_histories", "katello_content_view_versions", :name => "content_view_histories_cvh_cvv_id"
+  add_foreign_key "katello_content_view_histories", "katello_environments", :name => "content_view_histories_cvh_environment_id"
+
+  add_foreign_key "katello_content_view_package_filter_rules", "katello_content_view_filters", :name => "katello_content_view_package_filter_rules_filter_fk", :column => "content_view_filter_id"
+
+  add_foreign_key "katello_content_view_package_group_filter_rules", "katello_content_view_filters", :name => "katello_content_view_package_group_filter_rules_filter_fk", :column => "content_view_filter_id"
+
+  add_foreign_key "katello_content_view_puppet_environments", "environments", :name => "katello_cvpe_pe_id", :column => "puppet_environment_id"
+  add_foreign_key "katello_content_view_puppet_environments", "katello_content_view_versions", :name => "katello_content_view_puppet_environments_view_version_fk", :column => "content_view_version_id"
+  add_foreign_key "katello_content_view_puppet_environments", "katello_environments", :name => "katello_content_view_puppet_environments_environment_fk", :column => "environment_id"
+
+  add_foreign_key "katello_content_view_puppet_modules", "katello_content_views", :name => "katello_content_view_puppet_modules_view_fk", :column => "content_view_id"
+
+  add_foreign_key "katello_content_view_repositories", "katello_content_views", :name => "katello_content_view_repostories_content_view_fk", :column => "content_view_id"
+  add_foreign_key "katello_content_view_repositories", "katello_repositories", :name => "content_view_definition_repositories_repository_id_fk", :column => "repository_id"
+  add_foreign_key "katello_content_view_repositories", "katello_repositories", :name => "katello_content_view_repositories_repository_view_fk", :column => "repository_id"
+
+  add_foreign_key "katello_content_view_versions", "katello_content_views", :name => "content_view_versions_content_view_id_fk", :column => "content_view_id"
+
+  add_foreign_key "katello_content_views", "taxonomies", :name => "katello_content_views_organization_fk", :column => "organization_id"
+
+  add_foreign_key "katello_distributors", "katello_content_views", :name => "distributors_content_view_id_fk", :column => "content_view_id"
+  add_foreign_key "katello_distributors", "katello_environments", :name => "distributors_environment_id_fk", :column => "environment_id"
+
+  add_foreign_key "katello_environment_priors", "katello_environments", :name => "environment_priors_environment_id_fk", :column => "environment_id"
+  add_foreign_key "katello_environment_priors", "katello_environments", :name => "environment_priors_prior_id_fk", :column => "prior_id"
+
+  add_foreign_key "katello_environments", "taxonomies", :name => "katello_environments_organization_fk", :column => "organization_id"
+
+  add_foreign_key "katello_erratum_bugzillas", "katello_errata", :name => "katello_erratum_bugzillas_errata_id_fk", :column => "erratum_id"
+
+  add_foreign_key "katello_erratum_cves", "katello_errata", :name => "katello_erratum_cves_errata_id_fk", :column => "erratum_id"
+
+  add_foreign_key "katello_erratum_packages", "katello_errata", :name => "katello_erratum_packages_errata_id_fk", :column => "erratum_id"
+
+  add_foreign_key "katello_gpg_keys", "taxonomies", :name => "katello_gpg_keys_organization_fk", :column => "organization_id"
+
+  add_foreign_key "katello_help_tips", "users", :name => "help_tips_user_id_fk"
+
+  add_foreign_key "katello_host_collections", "taxonomies", :name => "katello_host_collections_organization_fk", :column => "organization_id"
+
+  add_foreign_key "katello_job_tasks", "katello_jobs", :name => "job_tasks_job_id_fk", :column => "job_id"
+  add_foreign_key "katello_job_tasks", "katello_task_statuses", :name => "job_tasks_task_status_id_fk", :column => "task_status_id"
+
+  add_foreign_key "katello_key_host_collections", "katello_activation_keys", :name => "key_host_collections_activation_key_id_fk", :column => "activation_key_id"
+  add_foreign_key "katello_key_host_collections", "katello_host_collections", :name => "key_host_collections_host_collection_id_fk", :column => "host_collection_id"
+
+  add_foreign_key "katello_marketing_engineering_products", "katello_products", :name => "marketing_engineering_products_engineering_product_id_fk", :column => "engineering_product_id"
+  add_foreign_key "katello_marketing_engineering_products", "katello_products", :name => "marketing_engineering_products_marketing_product_id_fk", :column => "marketing_product_id"
+
+  add_foreign_key "katello_notices", "taxonomies", :name => "katello_notices_organization_fk", :column => "organization_id"
+
+  add_foreign_key "katello_products", "katello_gpg_keys", :name => "products_gpg_key_id_fk", :column => "gpg_key_id"
+  add_foreign_key "katello_products", "katello_providers", :name => "products_provider_id_fk", :column => "provider_id"
+  add_foreign_key "katello_products", "katello_sync_plans", :name => "products_sync_plan_id_fk", :column => "sync_plan_id"
+  add_foreign_key "katello_products", "taxonomies", :name => "katello_products_organization_fk", :column => "organization_id"
+
+  add_foreign_key "katello_providers", "katello_task_statuses", :name => "providers_task_status_id_fk", :column => "task_status_id"
+  add_foreign_key "katello_providers", "taxonomies", :name => "katello_providers_organization_fk", :column => "organization_id"
+
+  add_foreign_key "katello_repositories", "katello_content_view_versions", :name => "repositories_content_view_version_id_fk", :column => "content_view_version_id"
+  add_foreign_key "katello_repositories", "katello_environments", :name => "katello_repositories_environment_fk", :column => "environment_id"
+  add_foreign_key "katello_repositories", "katello_gpg_keys", :name => "repositories_gpg_key_id_fk", :column => "gpg_key_id"
+  add_foreign_key "katello_repositories", "katello_products", :name => "katello_repositories_product_fk", :column => "product_id"
+  add_foreign_key "katello_repositories", "katello_repositories", :name => "repositories_library_instance_id_fk", :column => "library_instance_id"
+
+  add_foreign_key "katello_repository_docker_images", "docker_images", :name => "katello_repository_docker_images_docker_image_id_fk"
+  add_foreign_key "katello_repository_docker_images", "katello_repositories", :name => "katello_repository_docker_images_repository_id_fk", :column => "repository_id"
+
+  add_foreign_key "katello_repository_errata", "katello_errata", :name => "katello_repository_errata_errata_id_fk", :column => "erratum_id"
+  add_foreign_key "katello_repository_errata", "katello_repositories", :name => "katello_repository_errata_repo_id_fk", :column => "repository_id"
+
+  add_foreign_key "katello_search_favorites", "users", :name => "search_favorites_user_id_fk"
+
+  add_foreign_key "katello_search_histories", "users", :name => "search_histories_user_id_fk"
+
+  add_foreign_key "katello_sync_plans", "taxonomies", :name => "katello_sync_plans_organization_fk", :column => "organization_id"
+
+  add_foreign_key "katello_system_activation_keys", "katello_activation_keys", :name => "system_activation_keys_activation_key_id_fk", :column => "activation_key_id"
+  add_foreign_key "katello_system_activation_keys", "katello_systems", :name => "system_activation_keys_system_id_fk", :column => "system_id"
+
+  add_foreign_key "katello_system_errata", "katello_errata", :name => "katello_system_errata_errata_id", :column => "erratum_id"
+  add_foreign_key "katello_system_errata", "katello_systems", :name => "katello_system_errata_system_id", :column => "system_id"
+
+  add_foreign_key "katello_system_host_collections", "katello_host_collections", :name => "system_host_collections_host_collection_id_fk", :column => "host_collection_id"
+  add_foreign_key "katello_system_host_collections", "katello_systems", :name => "system_host_collections_system_id_fk", :column => "system_id"
+
+  add_foreign_key "katello_system_repositories", "katello_repositories", :name => "katello_system_repositories_repo_id_fk", :column => "repository_id"
+  add_foreign_key "katello_system_repositories", "katello_systems", :name => "katello_system_repositories_system_id_fk", :column => "system_id"
+
+  add_foreign_key "katello_systems", "hosts", :name => "katello_systems_host_id"
+  add_foreign_key "katello_systems", "katello_content_views", :name => "systems_content_view_id_fk", :column => "content_view_id"
+  add_foreign_key "katello_systems", "katello_environments", :name => "systems_environment_id_fk", :column => "environment_id"
+
+  add_foreign_key "katello_task_statuses", "taxonomies", :name => "katello_task_statuses_organization_fk", :column => "organization_id"
+  add_foreign_key "katello_task_statuses", "users", :name => "task_statuses_user_id_fk"
+
+  add_foreign_key "katello_user_notices", "katello_notices", :name => "user_notices_notice_id_fk", :column => "notice_id"
+  add_foreign_key "katello_user_notices", "users", :name => "user_notices_user_id_fk"
 
   add_foreign_key "key_pairs", "compute_resources", :name => "key_pairs_compute_resource_id_fk"
 
