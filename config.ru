@@ -2,4 +2,4 @@
 require 'rack/lobster'
 
 require ::File.expand_path('../config/environment',  __FILE__)
-run Rhci::Application
+run Foreman::Application
