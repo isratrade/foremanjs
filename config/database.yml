@@ -9,7 +9,7 @@ development:
   port:     5432
   username: postgres
   password: postgres
-  database: rhci
+  database: foreman_with_fusor
   schema_search_path: public
   encoding: utf8
   template: template0
@@ -30,7 +30,7 @@ test:
   port:     5432
   username: postgres
   password: postgres
-  database: rhci_test
+  database: foreman_with_fusor_test
   schema_search_path: public
   encoding: utf8
   template: template0
@@ -46,7 +46,7 @@ production:
   port:     <%= ENV["OPENSHIFT_POSTGRESQL_DB_PORT"] %>
   username: adminwgaavt9
   password: QsD7AzaqcFDN
-  database: rhci
+  database: foreman_with_fusor
   schema_search_path: public
   encoding: utf8
   template: template0
