@@ -24,7 +24,7 @@ gem 'validates_lengths_from_database',  '~> 0.2.0'
 gem 'friendly_id', '~> 4.0'
 gem 'secure_headers', '~> 1.3.3'
 
-gem 'katello', :git => 'git@github.com:isratrade/katello.git'
+#gem 'katello', :git => 'git@github.com:isratrade/katello.git'
 #gem 'katello', :path => '../katello'
 
 # Newer version of safemode contains fixes for Ruby 1.9
