@@ -42,8 +42,7 @@ test:
 
 production:
   adapter:  postgresql
-  encoding: unicode
-  pool: 5
+  encoding: utf8
   database: <%=ENV['OPENSHIFT_APP_NAME']%>
   host: <%=ENV['$OPENSHIFT_POSTGRESQL_DB_HOST']%>
   port: <%=ENV['$OPENSHIFT_POSTGRESQL_DB_PORT']%>
